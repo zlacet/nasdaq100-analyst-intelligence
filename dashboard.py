@@ -225,27 +225,28 @@ for col, val, label in [
 st.markdown("<br>", unsafe_allow_html=True)
 
 # ── Tabs ──────────────────────────────────────────────────────────────────────
-tab4, tab1, tab2, tab3 = st.tabs([
-    "🤖 Broker Ranking & Prediction",
+tab1, tab2, tab3, tab4 = st.tabs([
     "📈 Rating Trends",
     "🏦 Broker Behavior",
     "🎯 Price Target Aggressiveness",
+    "🤖 Predict Implied Upside",
 ])
 
 # ══════════════════════════════════════════════════════════════════════════════
 # TAB 1 (first) — Broker Ranking & Prediction
 # ══════════════════════════════════════════════════════════════════════════════
 with tab4:
-    st.markdown("### Broker Ranking by Predicted Implied Upside")
+    st.markdown("### Predict Implied Upside")
+    st.info("Enter a broker and ticker. The model uses their historical behavior, the current VIX, and the Fed Rate to predict how aggressive their price target will be.")
     st.caption(
         f"Predictions use live market conditions — VIX: {current_vix:.1f} · Fed Rate: {current_fed:.2f}% · "
         f"Model: XGBoost · R² = 0.888"
     )
 
-    col_inputs, col_chart = st.columns([1, 2], gap="large")
+    col_in, col_out = st.columns([1, 1], gap="large")
 
-    with col_inputs:
-        st.markdown("#### Select Inputs")
+    with col_in:
+        st.markdown("#### Inputs")
         rank_ticker = st.selectbox(
             "Ticker",
             options=all_tickers,
@@ -255,22 +256,20 @@ with tab4:
         rank_year = st.slider(
             "Year",
             min_value=2014,
-            max_value=2025,
+            max_value=2030,
             value=2025,
             key="rank_year",
         )
-        rank_btn = st.button("🏆 Rank All Brokers", use_container_width=True, type="primary")
-
-        st.markdown("---")
-        st.markdown("#### Single Broker Lookup")
         single_broker = st.selectbox(
             "Broker ID",
             options=all_brokers,
             index=all_brokers.index(29901) if 29901 in all_brokers else 0,
             key="single_broker",
         )
-        lookup_btn = st.button("🔮 Predict", use_container_width=True)
+        lookup_btn = st.button("🔮 Predict", use_container_width=True, type="primary")
 
+    with col_out:
+        st.markdown("#### Output")
         if lookup_btn:
             try:
                 te   = ticker_encoder.transform([rank_ticker])[0]
@@ -292,35 +291,15 @@ with tab4:
                 )
             except Exception as e:
                 st.error(f"Error: {e}")
-
-    with col_chart:
-        if rank_btn:
-            with st.spinner("Ranking all brokers..."):
-                ranking = get_broker_ranking(rank_ticker, rank_year, current_vix, current_fed)
         else:
-            ranking = get_broker_ranking(rank_ticker, rank_year, current_vix, current_fed)
-
-        colors = ["#16a34a" if v >= 0 else "#dc2626" for v in ranking["pred"]]
-        fig_rank = go.Figure(go.Bar(
-            x=ranking["pred"],
-            y=ranking["Broker"],
-            orientation="h",
-            marker_color=colors,
-            opacity=0.88,
-            width=0.7,
-        ))
-        fig_rank.add_vline(x=0, line_color="#6b7280", line_dash="dot")
-        fig_rank.update_layout(
-            title=f"All Brokers Ranked by Predicted Implied Upside — {rank_ticker} ({rank_year})",
-            xaxis_title="Predicted Implied Upside %",
-            yaxis_title="Broker ID",
-            xaxis=dict(ticksuffix="%"),
-            yaxis=dict(type="category", tickfont=dict(size=9), autorange="reversed"),
-            plot_bgcolor="white", paper_bgcolor="white",
-            height=max(600, len(ranking) * 14),
-            margin=dict(l=100),
-        )
-        st.plotly_chart(fig_rank, use_container_width=True)
+            st.markdown("""
+            <div style="background:#f1f5f9; border-radius:12px; padding:2rem; text-align:center; color:#94a3b8; height:180px; display:flex; align-items:center; justify-content:center;">
+                <div>
+                    <div style="font-size:2.5rem">🔮</div>
+                    <div style="margin-top:0.5rem">Select inputs and click Predict</div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════════════════════════
 # TAB 2 — Rating Trends
@@ -368,12 +347,8 @@ with tab1:
         name="Upgrades", marker_color="#16a34a", opacity=0.85, offsetgroup=0,
     ))
     fig_updown.add_trace(go.Bar(
-        x=updown["year"], y=updown["Hold"],
-        name="Holds", marker_color="#f59e0b", opacity=0.85, offsetgroup=1,
-    ))
-    fig_updown.add_trace(go.Bar(
         x=updown["year"], y=updown["Downgrade"],
-        name="Downgrades", marker_color="#dc2626", opacity=0.85, offsetgroup=2,
+        name="Downgrades", marker_color="#dc2626", opacity=0.85, offsetgroup=1,
     ))
     fig_updown.update_layout(
         barmode="group",
@@ -383,6 +358,7 @@ with tab1:
         height=400,
     )
     st.plotly_chart(fig_updown, use_container_width=True)
+    st.info("Analyst behavior has shifted dramatically over 11 years. The model learned these time-based patterns — making year a critical driver of how aggressively brokers set price targets.")
 
 # ══════════════════════════════════════════════════════════════════════════════
 # TAB 3 — Broker Behavior
@@ -429,6 +405,8 @@ with tab2:
     )
     st.plotly_chart(fig_bot, use_container_width=True)
 
+    st.info("A Buy rating from broker 26793 means something very different than one from broker 24503. The model accounts for each broker's historical bias when predicting implied upside.")
+
     with st.expander("📋 Full broker table"):
         display = broker_stats[["broker_number", "Buy", "Hold", "Sell", "total", "buy_pct"]].copy()
         display.columns = ["Broker ID", "Buy", "Hold", "Sell", "Total", "Buy %"]
@@ -466,6 +444,8 @@ with tab3:
         height=400,
     )
     st.plotly_chart(fig_pt, use_container_width=True)
+
+    st.info("Implied upside is exactly what our model predicts. This chart shows the historical distribution the model was trained on — how far above or below the stock price analysts have historically set their targets.")
 
     col_l, col_r = st.columns(2)
     with col_l:
