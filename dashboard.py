@@ -218,10 +218,7 @@ for col, val, label in [
 st.markdown("<br>", unsafe_allow_html=True)
 
 # ── Tabs ──────────────────────────────────────────────────────────────────────
-tab1, tab2, tab3, tab4 = st.tabs([
-    "📈 Rating Trends",
-    "🏦 Broker Behavior",
-    "🎯 Price Target Aggressiveness",
+tab4, = st.tabs([
     "🤖 Predicted Implied Upside / Downside",
 ])
 
