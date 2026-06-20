@@ -229,19 +229,19 @@ tab1, tab2, tab3, tab4 = st.tabs([
     "📈 Rating Trends",
     "🏦 Broker Behavior",
     "🎯 Price Target Aggressiveness",
-    "🤖 Predict Implied Upside",
+    "🤖 Predicted Implied Upside / Downside",
 ])
 
 # ══════════════════════════════════════════════════════════════════════════════
 # TAB 1 (first) — Broker Ranking & Prediction
 # ══════════════════════════════════════════════════════════════════════════════
 with tab4:
-    st.markdown("### Predict Implied Upside")
-    st.info("Enter a broker and ticker. The model uses their historical behavior, the current VIX, and the Fed Rate to predict how aggressive their price target will be.")
-    st.caption(
-        f"Predictions use live market conditions — VIX: {current_vix:.1f} · Fed Rate: {current_fed:.2f}% · "
-        f"Model: XGBoost · R² = 0.888"
-    )
+    import datetime
+    current_year = datetime.datetime.now().year
+
+    st.markdown("### Predicted Implied Upside / Downside")
+    st.info("Enter a broker and ticker, then adjust the market conditions. **VIX** measures market volatility and fear — a higher VIX signals uncertainty, which tends to make brokers more conservative with price targets. **Fed Rate** reflects the cost of borrowing — higher rates compress valuations, pushing implied upside down. Together these macro conditions shape how aggressively a broker will set their price target.")
+    st.caption(f"Model: XGBoost · R² = 0.888 · Year fixed to {current_year}")
 
     col_in, col_out = st.columns([1, 1], gap="large")
 
@@ -253,18 +253,29 @@ with tab4:
             index=all_tickers.index("AAPL") if "AAPL" in all_tickers else 0,
             key="rank_ticker",
         )
-        rank_year = st.slider(
-            "Year",
-            min_value=2014,
-            max_value=2030,
-            value=2025,
-            key="rank_year",
-        )
         single_broker = st.selectbox(
             "Broker ID",
             options=all_brokers,
             index=all_brokers.index(29901) if 29901 in all_brokers else 0,
             key="single_broker",
+        )
+        user_vix = st.slider(
+            "VIX (Market Volatility)",
+            min_value=5.0,
+            max_value=80.0,
+            value=round(current_vix, 1),
+            step=0.1,
+            help="Current VIX is ~16.78. Higher VIX = more market fear.",
+            key="user_vix",
+        )
+        user_fed = st.slider(
+            "Fed Funds Rate (%)",
+            min_value=0.0,
+            max_value=10.0,
+            value=3.63,
+            step=0.01,
+            help="Current Fed Rate is ~3.63%.",
+            key="user_fed",
         )
         lookup_btn = st.button("🔮 Predict", use_container_width=True, type="primary")
 
@@ -273,21 +284,21 @@ with tab4:
         if lookup_btn:
             try:
                 te   = ticker_encoder.transform([rank_ticker])[0]
-                pred = model.predict([[int(single_broker), te, current_vix, current_fed, rank_year]])[0] * 100
+                pred = model.predict([[int(single_broker), te, user_vix, user_fed, current_year]])[0] * 100
                 color = "#16a34a" if pred >= 0 else "#dc2626"
                 sign  = "+" if pred >= 0 else ""
                 st.markdown(f"""
                 <div class="predict-result">
                     <div style="font-size:0.9rem; opacity:0.8; margin-bottom:0.4rem;">Predicted Implied Upside</div>
                     <div class="pct" style="color:{color}">{sign}{pred:.1f}%</div>
-                    <div class="sublabel">Broker {single_broker} · {rank_ticker} · {rank_year}</div>
+                    <div class="sublabel">Broker {single_broker} · {rank_ticker} · VIX {user_vix:.1f} · Fed {user_fed:.2f}%</div>
                 </div>
                 """, unsafe_allow_html=True)
                 direction = "above" if pred >= 0 else "below"
                 st.markdown(
                     f"\nBroker **{single_broker}** is predicted to set a **{rank_ticker}** "
                     f"price target **{sign}{pred:.1f}%** {direction} the current stock price "
-                    f"given current market conditions (VIX: {current_vix:.1f}, Fed Rate: {current_fed:.2f}%)."
+                    f"(VIX: {user_vix:.1f}, Fed Rate: {user_fed:.2f}%)."
                 )
             except Exception as e:
                 st.error(f"Error: {e}")
