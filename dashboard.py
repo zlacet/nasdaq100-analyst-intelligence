@@ -241,7 +241,7 @@ with tab4:
 
     st.markdown("### Predicted Implied Upside / Downside")
     st.info("Enter a broker and ticker, then adjust the market conditions. **VIX** measures market volatility and fear — a higher VIX signals uncertainty, which tends to make brokers more conservative with price targets. **Fed Rate** reflects the cost of borrowing — higher rates compress valuations, pushing implied upside down. Together these macro conditions shape how aggressively a broker will set their price target.")
-    st.caption(f"Model: XGBoost · R² = 0.888 · Year fixed to {current_year}")
+    st.caption(f"Model: XGBoost · R² = 0.888 · Predictions based on {datetime.datetime.now().strftime('%A, %B %d, %Y')}")
 
     col_in, col_out = st.columns([1, 1], gap="large")
 
@@ -277,6 +277,7 @@ with tab4:
             help="Current Fed Rate is ~3.63%.",
             key="user_fed",
         )
+        st.markdown(f"📅 **{datetime.datetime.now().strftime('%A, %B %d, %Y')}**")
         lookup_btn = st.button("🔮 Predict", use_container_width=True, type="primary")
 
     with col_out:
