@@ -194,13 +194,6 @@ def get_broker_ranking(ticker, year, vix, fed):
 st.markdown("## 📊 Analyst Intelligence Dashboard")
 st.markdown("**AnaChart NASDAQ-100 Dataset · 2014–2025 · ALY6980 Capstone | Lacet & Kuppili**")
 
-# Show live macro context
-st.markdown(
-    f'<span class="macro-pill">📈 VIX: {current_vix:.1f}</span>'
-    f'<span class="macro-pill">🏦 Fed Rate: {current_fed:.2f}%</span>'
-    f'<span class="macro-pill">🔄 Live market data</span>',
-    unsafe_allow_html=True
-)
 st.divider()
 
 # ── KPI row ───────────────────────────────────────────────────────────────────
