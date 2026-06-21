@@ -230,15 +230,14 @@ with tab4:
     current_year = datetime.datetime.now().year
 
     st.markdown("### Predicted Implied Upside / Downside")
-    st.info("Enter a broker and ticker, then adjust the market conditions. **VIX** measures market volatility and fear — a higher VIX signals uncertainty, which tends to make brokers more conservative with price targets. **Fed Rate** reflects the cost of borrowing — higher rates compress valuations, pushing implied upside down. Together these macro conditions shape how aggressively a broker will set their price target.")
-    st.caption(f"Model: XGBoost · R² = 0.888 · Predictions based on {datetime.datetime.now().strftime('%A, %B %d, %Y')}")
+    st.caption(f"Model: XGBoost · R² = 0.888 · {datetime.datetime.now().strftime('%A, %B %d, %Y')} · VIX: {current_vix:.1f} · Fed Rate: {current_fed:.2f}%")
 
     col_in, col_out = st.columns([1, 1], gap="large")
 
     with col_in:
-        st.markdown("#### Inputs")
+        st.markdown("#### You just saw this rating:")
         rank_ticker = st.selectbox(
-            "Ticker",
+            "Stock",
             options=all_tickers,
             index=all_tickers.index("AAPL") if "AAPL" in all_tickers else 0,
             key="rank_ticker",
@@ -249,56 +248,57 @@ with tab4:
             index=all_brokers.index(29901) if 29901 in all_brokers else 0,
             key="single_broker",
         )
-        user_vix = st.slider(
-            "VIX (Market Volatility)",
-            min_value=5.0,
-            max_value=80.0,
-            value=round(current_vix, 1),
-            step=0.1,
-            help="Current VIX is ~16.78. Higher VIX = more market fear.",
-            key="user_vix",
-        )
-        user_fed = st.slider(
-            "Fed Funds Rate (%)",
-            min_value=0.0,
-            max_value=10.0,
-            value=3.63,
-            step=0.01,
-            help="Current Fed Rate is ~3.63%.",
-            key="user_fed",
-        )
-        st.markdown(f"📅 **{datetime.datetime.now().strftime('%A, %B %d, %Y')}**")
         lookup_btn = st.button("🔮 Predict", use_container_width=True, type="primary")
 
     with col_out:
-        st.markdown("#### Output")
+        st.markdown("#### Here's what our model says:")
         if lookup_btn:
             try:
                 te   = ticker_encoder.transform([rank_ticker])[0]
-                pred = model.predict([[int(single_broker), te, user_vix, user_fed, current_year]])[0] * 100
+                pred = model.predict([[int(single_broker), te, current_vix, current_fed, current_year]])[0] * 100
                 color = "#16a34a" if pred >= 0 else "#dc2626"
                 sign  = "+" if pred >= 0 else ""
+                direction = "above" if pred >= 0 else "below"
+
+                # Main prediction
                 st.markdown(f"""
                 <div class="predict-result">
-                    <div style="font-size:0.9rem; opacity:0.8; margin-bottom:0.4rem;">Predicted Implied Upside</div>
+                    <div style="font-size:0.9rem; opacity:0.8; margin-bottom:0.4rem;">Predicted Implied Upside / Downside</div>
                     <div class="pct" style="color:{color}">{sign}{pred:.1f}%</div>
-                    <div class="sublabel">Broker {single_broker} · {rank_ticker} · VIX {user_vix:.1f} · Fed {user_fed:.2f}%</div>
+                    <div class="sublabel">Broker {single_broker} is predicted to set a {rank_ticker} price target {sign}{pred:.1f}% {direction} the current stock price</div>
                 </div>
                 """, unsafe_allow_html=True)
-                direction = "above" if pred >= 0 else "below"
-                st.markdown(
-                    f"\nBroker **{single_broker}** is predicted to set a **{rank_ticker}** "
-                    f"price target **{sign}{pred:.1f}%** {direction} the current stock price "
-                    f"(VIX: {user_vix:.1f}, Fed Rate: {user_fed:.2f}%)."
-                )
+
+                # Broker context
+                broker_data = df[df["broker_number"] == int(single_broker)]
+                if len(broker_data) > 0:
+                    broker_buy_pct = broker_data["rating_clean"].eq("Buy").mean() * 100
+                    broker_total   = len(broker_data)
+                    if broker_buy_pct >= 85:
+                        bias = "one of the most bullish brokers in the dataset — their Buy ratings carry less signal than average"
+                    elif broker_buy_pct >= 70:
+                        bias = "moderately bullish — roughly in line with the market average"
+                    else:
+                        bias = "one of the more conservative brokers in the dataset — their ratings tend to be more selective"
+                    st.info(f"**Broker context:** Broker {single_broker} issues Buy ratings {broker_buy_pct:.0f}% of the time across {broker_total:,} ratings — {bias}.")
+
+                # Market context
+                if current_vix < 20:
+                    vix_context = f"VIX is {current_vix:.1f} — the market is calm. Analysts tend to set more conservative targets in stable markets."
+                elif current_vix < 30:
+                    vix_context = f"VIX is {current_vix:.1f} — moderate volatility. Analysts may be pricing in some uncertainty."
+                else:
+                    vix_context = f"VIX is {current_vix:.1f} — elevated fear. Analysts historically set more aggressive recovery targets during volatile periods."
+                st.info(f"**Market context:** {vix_context} Fed Rate is {current_fed:.2f}%, which {'compresses' if current_fed > 3 else 'supports'} valuations.")
+
             except Exception as e:
                 st.error(f"Error: {e}")
         else:
             st.markdown("""
-            <div style="background:#f1f5f9; border-radius:12px; padding:2rem; text-align:center; color:#94a3b8; height:180px; display:flex; align-items:center; justify-content:center;">
+            <div style="background:#f1f5f9; border-radius:12px; padding:2rem; text-align:center; color:#94a3b8; height:260px; display:flex; align-items:center; justify-content:center;">
                 <div>
                     <div style="font-size:2.5rem">🔮</div>
-                    <div style="margin-top:0.5rem">Select inputs and click Predict</div>
+                    <div style="margin-top:0.5rem; font-size:1rem;">Select a stock and broker, then click to see what the model predicts</div>
                 </div>
             </div>
             """, unsafe_allow_html=True)
