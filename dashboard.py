@@ -235,7 +235,7 @@ with tab4:
     col_in, col_out = st.columns([1, 1], gap="large")
 
     with col_in:
-        st.markdown("#### You just saw this rating:")
+        st.markdown("#### Select a stock and broker:")
         rank_ticker = st.selectbox(
             "Stock",
             options=all_tickers,
